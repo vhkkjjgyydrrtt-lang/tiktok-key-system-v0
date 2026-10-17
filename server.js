@@ -5,6 +5,8 @@ const cors = require('cors');
 
 const app = express();
 
+app.set('trust proxy', 1); // <-- CHÈN DÒNG NÀY VÀO ĐÂY
+
 // Cho phép các trang web khác gọi API (CORS)
 app.use(cors({ origin: '*' }));
 
