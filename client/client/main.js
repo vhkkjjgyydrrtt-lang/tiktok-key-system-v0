@@ -3,7 +3,7 @@ const path = require('path');
 const { machineIdSync } = require('node-machine-id');
 const crypto = require('crypto');
 
-const API = 'https://tiktok-api-v0.onrender.com'; // ĐÃ CẬP NHẬT LINK MỚI
+const API = 'https://tiktok-api-v0.onrender.com'; // Link Render của bạn
 
 function getDeviceId() {
   return crypto.createHash('sha256').update(machineIdSync(true)).digest('hex').slice(0, 32);
@@ -12,7 +12,11 @@ function getDeviceId() {
 function createWindow() {
   const win = new BrowserWindow({
     width: 1100, height: 750, title: "Săn Rương TikTok",
-    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false }
+    webPreferences: { 
+        preload: path.join(__dirname, 'preload.js'), 
+        contextIsolation: true, 
+        nodeIntegration: false 
+    }
   });
   win.loadFile('index.html');
 }
