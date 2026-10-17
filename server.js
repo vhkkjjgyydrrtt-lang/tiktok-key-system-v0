@@ -5,7 +5,7 @@ const cors = require('cors');
 
 const app = express();
 app.use(cors({ origin: '*' }));
-app.use(express.json());
+app.use(cors({ origin: '*' }));
 
 const db = connect({
   url: process.env.TURSO_DATABASE_URL,
