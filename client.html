@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Săn Rương TikTok - Khách Hàng</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        body { background-color: #121212; color: #fff; padding: 15px; }
+        
+        /* Form đăng nhập */
+        #login-screen { height: 90vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; }
+        #login-screen input { padding: 12px; width: 100%; max-width: 320px; font-size: 16px; text-align: center; border-radius: 8px; border: 1px solid #444; background: #222; color: #fff; }
+        #login-screen button { padding: 12px 32px; font-size: 16px; cursor: pointer; background: #fe2c55; color: #fff; border: none; border-radius: 8px; font-weight: bold; }
+        
+        /* Giao diện săn rương */
+        #app-screen { display: none; max-width: 700px; margin: 0 auto; }
+        .top-bar { background: #1e1e1e; padding: 10px; display: flex; justify-content: space-between; align-items: center; border-radius: 8px; margin-bottom: 15px; border: 1px solid #333; }
+        #status { color: #4caf50; font-weight: bold; font-size: 14px; }
+        #btnLogout { background: #ff416c; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+        
+        .feed-container { display: flex; flex-direction: column; gap: 15px; }
+        .card { background: #1e1e1e; border-radius: 12px; padding: 12px; display: flex; align-items: center; gap: 15px; border-left: 4px solid #00e5ff; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .time-col { text-align: center; min-width: 70px; }
+        .time-col .time { font-size: 15px; font-weight: bold; }
+        .time-col .date { font-size: 11px; color: #888; margin-top: 4px; }
+        .info-col { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+        .row-top { display: flex; justify-content: space-between; align-items: center; }
+        .link-text { color: #00e5ff; font-weight: bold; font-size: 16px; }
+        .id-badge { background: #0d3b42; color: #00e5ff; font-size: 11px; padding: 2px 6px; border-radius: 4px; border: 1px solid #00e5ff;}
+        .row-mid { display: flex; gap: 8px; flex-wrap: wrap; }
+        .badge { font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: 500;}
+        .box-badge { background: #3d1d00; color: #ff9800; border: 1px solid #ff9800; }
+        .ratio-badge { background: #3d0013; color: #ff4081; border: 1px solid #ff4081; }
+        .row-bot { display: flex; gap: 8px; font-size: 11px; color: #aaa; align-items: center; }
+        .time-badge { color: #ffd54f; border: 1px solid #555; padding: 2px 6px; border-radius: 4px;}
+        .action-col { display: flex; gap: 8px; align-items: center; }
+        .btn { padding: 8px 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-copy { background: #2a2a2a; color: #fff; border: 1px solid #444; }
+        .btn-open { background: linear-gradient(90deg, #ff416c, #ff4b2b); color: #fff; }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+    </style>
+</head>
+<body>
+
+    <!-- Màn hình Đăng nhập -->
+    <div id="login-screen">
+        <h2>🔑 Nhập Key để vào Web</h2>
+        <input id="keyInput" placeholder="XXXX-XXXX-XXXX-XXXX" />
+        <button onclick="handleLogin()">Đăng nhập</button>
+        <div id="msg" style="font-size:14px; min-height:20px;"></div>
+    </div>
+
+    <!-- Màn hình chính -->
+    <div id="app-screen">
+        <div class="top-bar">
+            <div id="status">Đang tải...</div>
+            <button id="btnLogout" onclick="logout()">Đăng xuất</button>
+        </div>
+        <div class="feed-container" id="feed"></div>
+    </div>
+
+    <script>
+        // LINK RENDER CỦA BẠN
+        const API = 'https://tiktok-api-v0.onrender.com'; 
+        let currentKey = localStorage.getItem('user_key') || null;
+        let heartbeatTimer = null; 
+        let fetchTimer = null;
+
+        // Tự động đăng nhập nếu đã có key trong bộ nhớ
+        window.onload = async () => {
+            if (currentKey) {
+                document.getElementById('keyInput').value = currentKey;
+                await handleLogin();
+            }
+        };
+
+        async function handleLogin() {
+            const key = document.getElementById('keyInput').value.trim();
+            const msg = document.getElementById('msg');
+            if (!key) return msg.innerHTML = '<span style="color:red">Vui lòng nhập key</span>';
+            
+            msg.innerHTML = '<span style="color:#4caf50">Đang kiểm tra (chờ 30s nếu server ngủ)...</span>';
+            
+            try {
+                // Gửi deviceId giả là 'WEB' vì trình duyệt không lấy được mã máy
+                const res = await fetch(API + '/api/login', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: key, deviceId: 'WEB_BROWSER' })
+                });
+                const data = await res.json();
+
+                if (!data.ok) return msg.innerHTML = `<span style="color:red">❌ ${data.error}</span>`;
+
+                msg.innerHTML = '<span style="color:#4caf50">✅ Đăng nhập thành công</span>';
+                currentKey = key;
+                localStorage.setItem('user_key', key); // Lưu để lần sau không cần nhập lại
+                
+                setTimeout(() => {
+                    document.getElementById('login-screen').style.display = 'none';
+                    document.getElementById('app-screen').style.display = 'block';
+                    startHeartbeat(); startFetchingData();
+                }, 500);
+
+            } catch (e) {
+                msg.innerHTML = '<span style="color:red">❌ Lỗi kết nối Server!</span>';
+            }
+        }
+
+        function startHeartbeat() {
+            heartbeatTimer = setInterval(async () => {
+                try {
+                    const res = await fetch(API + '/api/heartbeat', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ key: currentKey, deviceId: 'WEB_BROWSER' })
+                    });
+                    const data = await res.json();
+                    if (!data.ok) { alert('Key đã hết hạn hoặc bị thu hồi.'); logout(); }
+                    else {
+                        const left = data.expiresAt ? Math.max(0, Math.floor((data.expiresAt - Date.now())/60000)) + ' phút' : 'Vĩnh viễn';
+                        document.getElementById('status').textContent = '⏱ Hạn: ' + left;
+                    }
+                } catch(e) {}
+            }, 60000);
+        }
+
+        async function startFetchingData() { 
+            await fetchChests(); 
+            fetchTimer = setInterval(fetchChests, 3000); 
+        }
+
+        async function fetchChests() {
+            try {
+                const res = await fetch(API + '/api/chests');
+                const data = await res.json();
+                if (data.ok && data.chests) renderChests(data.chests);
+            } catch (e) { console.log(e); }
+        }
+
+        function renderChests(chests) {
+            const feed = document.getElementById('feed');
+            if (chests.length === 0) return feed.innerHTML = '<div style="text-align:center; padding: 20px; color:#888;">Chưa có rương nào. Hãy đợi...</div>';
+            
+            feed.innerHTML = chests.map(c => {
+                const date = new Date(c.created_at);
+                const timeStr = date.toLocaleTimeString('vi-VN', {hour12: false});
+                const dateStr = date.toLocaleDateString('vi-VN');
+                const tiktokUrl = `https://www.tiktok.com/@${c.username}/live`;
+                return `
+                <div class="card" style="animation: slideIn 0.5s ease-out;">
+                    <div class="time-col"><div class="time">${timeStr}</div><div class="date">${dateStr}</div></div>
+                    <div class="info-col">
+                        <div class="row-top"><span class="link-text">/link${c.id}${Math.floor(Math.random()*100)}</span><span class="id-badge">ID: ${c.username.substring(0,5)}*${c.id}</span></div>
+                        <div class="row-mid"><span class="badge box-badge">Box: ${c.box_info}</span><span class="badge ratio-badge">Ratio: ${c.ratio}</span></div>
+                        <div class="row-bot"><span class="time-badge">Live: @${c.username}</span></div>
+                    </div>
+                    <div class="action-col">
+                        <button class="btn btn-copy" onclick="navigator.clipboard.writeText('${tiktokUrl}')">Copy</button>
+                        <button class="btn btn-open" onclick="window.open('${tiktokUrl}', '_blank')">Mở Link</button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function logout() {
+            clearInterval(heartbeatTimer); clearInterval(fetchTimer); 
+            localStorage.removeItem('user_key'); // Xóa key khỏi bộ nhớ
+            currentKey = null;
+            document.getElementById('app-screen').style.display = 'none';
+            document.getElementById('login-screen').style.display = 'flex';
+            document.getElementById('keyInput').value = ''; document.getElementById('msg').textContent = '';
+        }
+    </script>
+</body>
+</html>
