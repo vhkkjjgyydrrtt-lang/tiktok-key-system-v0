@@ -3,7 +3,7 @@ const path = require('path');
 const { machineIdSync } = require('node-machine-id');
 const crypto = require('crypto');
 
-const API = 'https://tiktok-key-system-v1.onrender.com'; // SỬA LINK NÀY
+const API = 'https://tiktok-key-system-v1.onrender.com'; // SỬA LINK RENDER CỦA BẠN
 
 function getDeviceId() {
   return crypto.createHash('sha256').update(machineIdSync(true)).digest('hex').slice(0, 32);
