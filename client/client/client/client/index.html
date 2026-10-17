@@ -27,15 +27,17 @@
         .action-col { display: flex; gap: 8px; align-items: center; }
         .btn { padding: 8px 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
         .btn-copy { background: #2a2a2a; color: #fff; border: 1px solid #444; }
+        .btn-copy:hover { background: #3a3a3a; }
         .btn-open { background: linear-gradient(90deg, #ff416c, #ff4b2b); color: #fff; }
+        .btn-open:hover { opacity: 0.8; }
         @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
     </style>
 </head>
 <body>
     <div id="login-screen" style="height: 80vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;">
         <h2>🔑 Nhập Key để vào App</h2>
-        <input id="keyInput" placeholder="XXXX-XXXX-XXXX-XXXX" style="padding:12px; width:320px; font-size:16px; text-align:center; border-radius:8px; border:1px solid #444; background:#222; color:#fff;" />
-        <button onclick="handleLogin()" style="padding:12px 32px; font-size:16px; cursor:pointer; background:#fe2c55; color:#fff; border:none; border-radius:8px;">Đăng nhập</button>
+        <input id="keyInput" placeholder="XXXX-XXXX-XXXX-XXXX" style="padding:12px; width:320px; font-size:16px; text-align:center; letter-spacing: 1px; border-radius:8px; border:1px solid #444; background:#222; color:#fff;" />
+        <button onclick="handleLogin()" style="padding:12px 32px; font-size:16px; cursor:pointer; background:#fe2c55; color:#fff; border:none; border-radius:8px; font-weight: bold;">Đăng nhập</button>
         <div id="msg" style="font-size:14px; min-height:20px;"></div>
     </div>
 
@@ -48,49 +50,65 @@
     </div>
 
     <script>
-        const API = 'https://tiktok-api-v0.onrender.com'; // ĐÃ CẬP NHẬT LINK MỚI
-        let currentKey = null; let heartbeatTimer = null; let fetchTimer = null;
+        const API = 'https://tiktok-api-v0.onrender.com'; // Link Render của bạn
+        let currentKey = null; 
+        let heartbeatTimer = null; 
+        let fetchTimer = null;
 
         async function handleLogin() {
             const key = document.getElementById('keyInput').value.trim();
             const msg = document.getElementById('msg');
             if (!key) return msg.innerHTML = '<span style="color:red">Vui lòng nhập key</span>';
+            
             msg.innerHTML = '<span style="color:#4caf50">Đang kiểm tra...</span>';
-            const res = await window.api.login(key);
-            if (!res.ok) return msg.innerHTML = `<span style="color:red">❌ ${res.error}</span>`;
-            msg.innerHTML = '<span style="color:#4caf50">✅ Đăng nhập thành công</span>';
-            currentKey = key;
-            setTimeout(() => {
-                document.getElementById('login-screen').style.display = 'none';
-                document.getElementById('app-screen').style.display = 'block';
-                startHeartbeat(); startFetchingData();
-            }, 600);
+            
+            try {
+                const res = await window.api.login(key);
+                if (!res.ok) return msg.innerHTML = `<span style="color:red">❌ ${res.error}</span>`;
+                
+                msg.innerHTML = '<span style="color:#4caf50">✅ Đăng nhập thành công</span>';
+                currentKey = key;
+                setTimeout(() => {
+                    document.getElementById('login-screen').style.display = 'none';
+                    document.getElementById('app-screen').style.display = 'block';
+                    startHeartbeat(); 
+                    startFetchingData();
+                }, 600);
+            } catch (err) {
+                msg.innerHTML = '<span style="color:red">❌ Lỗi kết nối Server!</span>';
+            }
         }
 
         function startHeartbeat() {
             heartbeatTimer = setInterval(async () => {
-                const res = await window.api.heartbeat(currentKey);
-                if (!res.ok) { alert('Key đã hết hạn hoặc bị thu hồi.'); logout(); }
-                else {
-                    const left = res.expiresAt ? Math.max(0, Math.floor((res.expiresAt - Date.now())/60000)) + ' phút' : 'Vĩnh viễn';
-                    document.getElementById('status').textContent = '⏱ Hạn: ' + left;
-                }
+                try {
+                    const res = await window.api.heartbeat(currentKey);
+                    if (!res.ok) { alert('Key đã hết hạn hoặc bị thu hồi.'); logout(); }
+                    else {
+                        const left = res.expiresAt ? Math.max(0, Math.floor((res.expiresAt - Date.now())/60000)) + ' phút' : 'Vĩnh viễn';
+                        document.getElementById('status').textContent = '⏱ Hạn dùng: ' + left;
+                    }
+                } catch (e) {}
             }, 60000);
         }
 
-        async function startFetchingData() { await fetchChests(); fetchTimer = setInterval(fetchChests, 3000); }
+        async function startFetchingData() { 
+            await fetchChests(); 
+            fetchTimer = setInterval(fetchChests, 3000); 
+        }
 
         async function fetchChests() {
             try {
                 const res = await fetch(API + '/api/chests');
                 const data = await res.json();
                 if (data.ok && data.chests) renderChests(data.chests);
-            } catch (e) { console.log(e); }
+            } catch (e) { console.log("Lỗi lấy dữ liệu", e); }
         }
 
         function renderChests(chests) {
             const feed = document.getElementById('feed');
             if (chests.length === 0) return feed.innerHTML = '<div style="text-align:center; padding: 20px; color:#888;">Chưa có rương nào. Hãy đợi...</div>';
+            
             feed.innerHTML = chests.map(c => {
                 const date = new Date(c.created_at);
                 const timeStr = date.toLocaleTimeString('vi-VN', {hour12: false});
