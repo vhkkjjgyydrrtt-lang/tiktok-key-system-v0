@@ -1,24 +1,26 @@
 const express = require('express');
 const crypto = require('crypto');
-// SỬA DÒNG NÀY: Dùng compat để có hàm execute và batch
 const { createClient } = require('@tursodatabase/serverless/compat');
 const cors = require('cors');
 
 const app = express();
-
+app.use(cors({ origin: '*' }));
+app.use(express.json());
 app.set('trust proxy', 1);
 
-// Cho phép các trang web khác gọi API (CORS)
-app.use(cors({ origin: '*' }));
-
-// Đọc dữ liệu dạng JSON gửi lên từ Web Admin
-app.use(express.json());
-
-// SỬA DÒNG NÀY: Dùng createClient thay vì connect
 const db = createClient({
   url: process.env.TURSO_DATABASE_URL,
   authToken: process.env.TURSO_AUTH_TOKEN,
 });
+
+// Hàm chuyển đổi dữ liệu từ Mảng sang Đối tượng (Fix lỗi undefined)
+function rowToObject(row, columns) {
+  if (!row) return null;
+  if (!Array.isArray(row)) return row; 
+  const obj = {};
+  columns.forEach((col, i) => { obj[col] = row[i]; });
+  return obj;
+}
 
 // Khởi tạo Database
 async function initDB() {
@@ -78,7 +80,7 @@ app.post('/api/login', async (req, res) => {
   if (!key || !deviceId) return res.json({ ok: false, error: 'Thiếu thông tin' });
 
   const result = await db.execute({ sql: 'SELECT * FROM keys WHERE key_value = ?', args: [key.trim().toUpperCase()] });
-  const row = result.rows[0];
+  const row = rowToObject(result.rows[0], result.columns);
 
   if (!row) return res.json({ ok: false, error: 'Bạn đã nhập sai key hoặc không có key đó' });
   if (row.revoked) return res.json({ ok: false, error: 'Key đã bị thu hồi' });
@@ -98,7 +100,8 @@ app.post('/api/login', async (req, res) => {
 app.post('/api/heartbeat', async (req, res) => {
   const { key, deviceId } = req.body;
   const result = await db.execute({ sql: 'SELECT * FROM keys WHERE key_value = ?', args: [key] });
-  const row = result.rows[0];
+  const row = rowToObject(result.rows[0], result.columns);
+  
   if (!row || row.revoked || row.device_id !== deviceId) return res.json({ ok: false });
   if (row.expires_at && Date.now() > row.expires_at) return res.json({ ok: false, reason: 'expired' });
   res.json({ ok: true, expiresAt: row.expires_at });
@@ -113,7 +116,10 @@ app.post('/admin/keys', adminAuth, async (req, res) => {
 
 app.get('/admin/keys', adminAuth, async (req, res) => {
   const result = await db.execute('SELECT * FROM keys ORDER BY id DESC');
-  const keys = result.rows.map(r => ({ ...r, status: keyStatus(r) }));
+  const keys = result.rows.map(rowRaw => {
+    const r = rowToObject(rowRaw, result.columns);
+    return { ...r, status: keyStatus(r) };
+  });
   res.json({ ok: true, keys });
 });
 
@@ -136,7 +142,8 @@ app.delete('/admin/keys/:id', adminAuth, async (req, res) => {
 app.get('/api/chests', async (req, res) => {
   try {
     const result = await db.execute('SELECT * FROM chests ORDER BY id DESC LIMIT 20');
-    res.json({ ok: true, chests: result.rows });
+    const chests = result.rows.map(rowRaw => rowToObject(rowRaw, result.columns));
+    res.json({ ok: true, chests });
   } catch (error) {
     res.json({ ok: false, error: error.message });
   }
