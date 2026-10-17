@@ -1,18 +1,21 @@
 const express = require('express');
 const crypto = require('crypto');
-const { connect } = require('@tursodatabase/serverless');
+// SỬA DÒNG NÀY: Dùng compat để có hàm execute và batch
+const { createClient } = require('@tursodatabase/serverless/compat');
 const cors = require('cors');
 
 const app = express();
 
-app.set('trust proxy', 1); // <-- CHÈN DÒNG NÀY VÀO ĐÂY
+app.set('trust proxy', 1);
 
 // Cho phép các trang web khác gọi API (CORS)
 app.use(cors({ origin: '*' }));
 
 // Đọc dữ liệu dạng JSON gửi lên từ Web Admin
 app.use(express.json());
-const db = connect({
+
+// SỬA DÒNG NÀY: Dùng createClient thay vì connect
+const db = createClient({
   url: process.env.TURSO_DATABASE_URL,
   authToken: process.env.TURSO_AUTH_TOKEN,
 });
