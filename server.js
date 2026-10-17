@@ -159,6 +159,31 @@ app.post('/api/chests', async (req, res) => {
   res.json({ ok: true, message: 'Đã thêm rương!' });
 });
 
+// ==========================================
+// THÊM MỚI: 2 API DÙNG ĐỂ XÓA RƯƠNG (LIVE LỖI)
+// ==========================================
+
+// 1. API xóa rương theo ID (Dành cho nút Xóa trên web)
+app.delete('/api/chests/:id', async (req, res) => {
+  try {
+    await db.execute({ sql: 'DELETE FROM chests WHERE id=?', args: [req.params.id] });
+    res.json({ ok: true, message: 'Đã xóa rương' });
+  } catch (error) {
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// 2. API xóa rương theo Tên tài khoản (Dành cho Tool Python khi hết Live)
+app.delete('/api/chests/username/:username', async (req, res) => {
+  try {
+    await db.execute({ sql: 'DELETE FROM chests WHERE username=?', args: [req.params.username] });
+    res.json({ ok: true, message: 'Đã xóa rương của ' + req.params.username });
+  } catch (error) {
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+// ==========================================
+
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`🚀 API running on port ${PORT}`);
