@@ -4,9 +4,12 @@ const { connect } = require('@tursodatabase/serverless');
 const cors = require('cors');
 
 const app = express();
-app.use(cors({ origin: '*' }));
+
+// Cho phép các trang web khác gọi API (CORS)
 app.use(cors({ origin: '*' }));
 
+// Đọc dữ liệu dạng JSON gửi lên từ Web Admin
+app.use(express.json());
 const db = connect({
   url: process.env.TURSO_DATABASE_URL,
   authToken: process.env.TURSO_AUTH_TOKEN,
